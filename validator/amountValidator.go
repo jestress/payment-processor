@@ -25,7 +25,7 @@ func (v *AmountValidator) Validate(request string) (int, error) {
 	}
 
 	amount, err := strconv.Atoi(parts[1]) // Convert the amount to an integer
-	if err != nil || amount <= 0 {        // Check if the amount is a valid integer
+	if err != nil || amount <= 0 {        // Check if the amount is a valid integer and is greater than 0
 		return -1, fmt.Errorf(messages.InvalidAmountErrorMessage)
 	}
 

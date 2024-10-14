@@ -60,7 +60,7 @@ func Test_AmountValidator_Validate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			validator := &AmountValidator{}
+			validator := NewAmountValidator()
 			result, error := validator.Validate(tt.request)
 			if (error != nil) != tt.errorExpected {
 				t.Errorf("Unexpected error during validation: %v, expected: %v", error, tt.errorExpected)

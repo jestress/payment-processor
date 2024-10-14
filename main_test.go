@@ -29,6 +29,7 @@ type TestScheme struct {
 	maxDuration    time.Duration
 }
 
+// Global variables for server shutdown synchronization during concurrent request/connection execution
 var shutdownSynchronizationMutex sync.Mutex
 var shutdownInitiated bool
 var serverShutdownInitiationTime time.Time
