@@ -42,6 +42,10 @@ To minimize human error and automate unit test execution, mocks for dependencies
 
 Due to the scope of the requirements, security measures such as TLS or Encode/Decode has not been implemented.
 
+# Consecutive request handling on an open connection
+
+Server has been designed to process as many consecutive requests as possible, as long as each request is terminated ('\n') correctly. Due to this design, TCP Server Line 179 refreshes the deadline on an active request stream reader, as soon as a correctly escaped request is received.
+
 # Important note about TCP Backlog Queue Management
 
 Integration tests cover various scenarios where the TCP server is shut down, restarted, and more. For tests where the number of incoming requests exceeds the capacity that the OS Network Stack can directly handle, subsequent connections are enqueued in the TCP backlog queue.

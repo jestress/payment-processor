@@ -1,0 +1,6 @@
+{    
+    "go.testFlags": [
+        "-count=1" // Disable test caching
+    ],
+    "go.testTimeout": "120s",
+}

@@ -166,10 +166,17 @@ func (s *TcpServer) handleConnection(conn net.Conn) {
 		}
 	}()
 
+	refreshReadDeadlineOnConnection(conn)
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() { // Wait for client to send a request into the request stream
+		if err := scanner.Err(); err != nil {
+			log.Printf("Server||C:%s|Error reading from connection: %s", remoteAddr, err)
+			break
+		}
+
 		request := scanner.Text()
 		log.Printf("Server||C:%s||Request received: %s\n", remoteAddr, request)
+		refreshReadDeadlineOnConnection(conn) // As soon as a request is received, refresh the read deadline on the connection
 		start := time.Now()
 		requestHandler := NewRequestHandler(validator.NewAmountValidator(), s.requestTerminationChannel)
 		response := requestHandler.HandleRequest(request)
@@ -180,9 +187,13 @@ func (s *TcpServer) handleConnection(conn net.Conn) {
 			log.Printf("Server|C:%s|Error writing response: %s.\n", remoteAddr, err.Error())
 		}
 	}
+}
 
-	if err := scanner.Err(); err != nil {
-		log.Println("Server|Error reading from connection:", err)
+// Refresh the read deadline on the connection to ensure that the server waits for the client to send a request.
+func refreshReadDeadlineOnConnection(conn net.Conn) {
+	readErr := conn.SetReadDeadline(time.Now().Add(config.ReadTimeoutForActiveRequest))
+	if readErr != nil {
+		log.Printf("Server|C:%s|Error setting read deadline: %v\n", conn.RemoteAddr(), readErr)
 	}
 }
 

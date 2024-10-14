@@ -144,6 +144,18 @@ func Test_PaymentProcessing_InvalidRequest_RequestRejected(t *testing.T) {
 	assert.Equal(t, "RESPONSE|REJECTED|Invalid request", response, "Unexpected response")
 }
 
+func Test_PaymentProcessing_NonEscapedRequest_ServerTimesOutRequest(t *testing.T) {
+	setupServer(t)
+	conn, err := net.Dial("tcp", ":8080")
+	require.NoError(t, err, "Failed to connect to server")
+	defer conn.Close()
+
+	_, err = fmt.Fprintf(conn, "PAYMENT|100")
+	require.NoError(t, err, "Failed to send request")
+	_, err = bufio.NewReader(conn).ReadString('\n')
+	require.Error(t, err, "Expected error when sending non-escaped request")
+}
+
 func Test_PaymentProcessing_InvalidAmount_RequestRejected(t *testing.T) {
 	setupServer(t)
 	conn, err := net.Dial("tcp", ":8080")
@@ -300,6 +312,10 @@ func Test_PaymentProcessing_SendConsecutiveRequestsOnTheSameConnection_ShutdownT
 
 		requestStart := time.Now()
 		response, err := bufio.NewReader(conn).ReadString('\n')
+		if err != nil {
+			fmt.Printf("Error reading response: %v\n", err)
+		}
+
 		start := time.Now()
 		require.NoError(t, err, "Failed to read response")
 		duration := time.Since(requestStart)
