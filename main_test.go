@@ -153,7 +153,7 @@ func Test_PaymentProcessing_NonEscapedRequest_ServerTimesOutRequest(t *testing.T
 	_, err = fmt.Fprintf(conn, "PAYMENT|100")
 	require.NoError(t, err, "Failed to send request")
 	_, err = bufio.NewReader(conn).ReadString('\n')
-	require.Error(t, err, "Expected error when sending non-escaped request")
+	assert.Error(t, err, "Expected error when sending non-escaped request")
 }
 
 func Test_PaymentProcessing_InvalidAmount_RequestRejected(t *testing.T) {
@@ -181,14 +181,14 @@ func Test_PaymentProcessing_InvalidConnectionToTheServer_ConnectionReturnsError(
 	conn.Close()
 
 	_, err = fmt.Fprintf(conn, "PAYMENT|10\n")
-	require.Error(t, err, "Expected error when sending request to closed connection")
+	assert.Error(t, err, "Expected error when sending request to closed connection")
 }
 
 func Test_PaymentProcessing_SendRequestToInvalidPort_ConnectionFails(t *testing.T) {
 	setupServer(t)
 	conn, err := net.Dial("tcp", ":8081")
-	require.Error(t, err, "Expected error when connecting to invalid port")
-	require.Nil(t, conn, "Expected connection to be nil")
+	assert.Error(t, err, "Expected error when connecting to invalid port")
+	assert.Nil(t, conn, "Expected connection to be nil")
 }
 
 func Test_PaymentProcessing_ConnectDuringServerShutdown_ServerReturnsResponseWhileGracefullyShuttingDown(t *testing.T) {
@@ -224,8 +224,8 @@ func Test_PaymentProcessing_ConnectAfterServerShutdown_ServerConnectionReturnsEr
 
 	conn, err := net.Dial("tcp", ":8080")
 
-	require.Error(t, err, "Expected error when connecting to closed server")
-	require.Nil(t, conn, "Expected connection to be nil")
+	assert.Error(t, err, "Expected error when connecting to closed server")
+	assert.Nil(t, conn, "Expected connection to be nil")
 }
 
 func Test_PaymentProcessing_ActiveRequestDuringServerShutdown_RequestIsProcessedBeforeServerShutsDown_ServerReturnsResponse(t *testing.T) {
