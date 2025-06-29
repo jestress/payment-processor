@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/form3tech-oss/interview-simulator/config"
-	"github.com/form3tech-oss/interview-simulator/messages"
-	"github.com/form3tech-oss/interview-simulator/mock"
+	"github.com/jestress/payment-processor/config"
+	"github.com/jestress/payment-processor/messages"
+	"github.com/jestress/payment-processor/mock"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )

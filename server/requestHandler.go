@@ -5,9 +5,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/form3tech-oss/interview-simulator/config"
-	"github.com/form3tech-oss/interview-simulator/contracts"
-	"github.com/form3tech-oss/interview-simulator/messages"
+	"github.com/jestress/payment-processor/config"
+	"github.com/jestress/payment-processor/contracts"
+	"github.com/jestress/payment-processor/messages"
 )
 
 type RequestHandler struct {

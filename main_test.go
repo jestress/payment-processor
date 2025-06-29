@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/form3tech-oss/interview-simulator/config"
-	"github.com/form3tech-oss/interview-simulator/server"
-	"github.com/form3tech-oss/interview-simulator/validator"
+	"github.com/jestress/payment-processor/config"
+	"github.com/jestress/payment-processor/server"
+	"github.com/jestress/payment-processor/validator"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

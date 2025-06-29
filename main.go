@@ -3,9 +3,9 @@ package main
 import (
 	"log"
 
-	"github.com/form3tech-oss/interview-simulator/contracts"
-	"github.com/form3tech-oss/interview-simulator/server"
-	"github.com/form3tech-oss/interview-simulator/validator"
+	"github.com/jestress/payment-processor/contracts"
+	"github.com/jestress/payment-processor/server"
+	"github.com/jestress/payment-processor/validator"
 )
 
 func init() {

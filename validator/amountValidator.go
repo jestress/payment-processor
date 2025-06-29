@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/form3tech-oss/interview-simulator/messages"
+	"github.com/jestress/payment-processor/messages"
 )
 
 // AmountValidator takes a raw request and validates it to ensure it is a valid payment request.

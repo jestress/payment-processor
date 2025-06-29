@@ -3,7 +3,7 @@ package server
 import (
 	"testing"
 
-	"github.com/form3tech-oss/interview-simulator/mock"
+	"github.com/jestress/payment-processor/mock"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )

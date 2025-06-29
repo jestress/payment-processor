@@ -3,7 +3,7 @@ package validator
 import (
 	"testing"
 
-	"github.com/form3tech-oss/interview-simulator/messages"
+	"github.com/jestress/payment-processor/messages"
 )
 
 func Test_AmountValidator_Validate(t *testing.T) {
