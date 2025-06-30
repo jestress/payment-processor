@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"log"
+	"os"
+	"os/signal"
 
-	"github.com/jestress/payment-processor/contracts"
 	"github.com/jestress/payment-processor/server"
 	"github.com/jestress/payment-processor/validator"
 )
@@ -12,33 +14,30 @@ func init() {
 	log.SetFlags(log.Ltime | log.Lmicroseconds)
 }
 
-func Start(tcpServer contracts.TcpServer) error {
-	go tcpServer.Start()
-
-	log.Println("Server started. Press Ctrl+C to exit")
-	exitChannel := tcpServer.GetExitChannel() // Get the exit channel to listen for exit signals
-	log.Println("Exit channel configured.")
-	<-exitChannel // Wait for an exit signal to be received
-	log.Println("Received signal to exit.")
-
-	tcpServer.Stop()
-	return nil
-}
-
-func Stop(tcpServer contracts.TcpServer) {
-	tcpServer.Stop()
-}
-
 func main() {
 	validator := validator.NewAmountValidator()
 	requestHandler := server.NewRequestHandler(validator, make(chan struct{}))
-	tcpServer, err := server.NewTcpServer(requestHandler)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+	s, err := server.NewTcpServer(requestHandler, stop)
+	defer stop()
 	if err != nil {
-		log.Printf("Error creating server: %v\n", err)
+		log.Printf("error creating server: %v\n", err)
 		return
 	}
 
-	if err := Start(tcpServer); err != nil {
+	go func() {
+		if err := s.Start(); err != nil {
+			log.Printf("Server error: %v\n", err)
+			stop()
+		}
+	}()
+
+	if err := s.Start(); err != nil {
 		log.Printf("Error starting server: %v\n", err)
 	}
+
+	<-ctx.Done() // Wait for the context to be done, which will happen on exit signal
+	log.Println("Received exit signal, stopping server...")
+	stop()
 }

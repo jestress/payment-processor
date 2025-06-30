@@ -1,6 +1,9 @@
 package contracts
 
-import "os"
+import (
+	"context"
+	"os"
+)
 
 // Defines methods for a TCP server.
 type TcpServer interface {
@@ -9,7 +12,7 @@ type TcpServer interface {
 	GetExitChannel() chan os.Signal
 
 	// Starts the TCP server.
-	Start() error
+	Start() (context.Context, error)
 
 	// Stops the TCP server, closing the listener and stopping accepting new connections.
 	Stop()

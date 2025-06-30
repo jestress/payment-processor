@@ -2,13 +2,11 @@ package server
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"log"
 	"net"
-	"os"
-	"os/signal"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/jestress/payment-processor/config"
@@ -17,10 +15,10 @@ import (
 )
 
 type TcpServer struct {
-	inChan       chan net.Conn  // Channel to signal the server to handle incoming connection
-	exitChan     chan os.Signal // Channel to listen for exit signals such as Ctrl+C
-	rqtChan      chan struct{}  // Channel to signal the server to gracefully terminate active requests
-	shutdownChan chan struct{}  // Channel to signal the server to cleanup and shutdown
+	cnFn         context.CancelFunc
+	inChan       chan net.Conn // Channel to signal the server to handle incoming connection
+	rqtChan      chan struct{} // Channel to signal the server to gracefully terminate active requests
+	shutdownChan chan struct{} // Channel to signal the server to cleanup and shutdown
 	conns        map[net.Conn]struct{}
 	l            net.Listener
 	rh           contracts.RequestHandler
@@ -28,31 +26,21 @@ type TcpServer struct {
 	svWg         sync.WaitGroup
 }
 
-func NewTcpServer(
-	rh contracts.RequestHandler,
-) (*TcpServer, error) {
-	exitChannel := make(chan os.Signal, 2)
-	signal.Notify(exitChannel, syscall.SIGINT, syscall.SIGTERM) // Modify the flags for signaling the exit channel with further commands
-
+func NewTcpServer(rh contracts.RequestHandler, cn context.CancelFunc) (*TcpServer, error) {
 	listener, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", config.ListenerPortnumber))
 	if err != nil {
 		return nil, err
 	}
 
 	return &TcpServer{
+		cnFn:         cn,
 		inChan:       make(chan net.Conn),
 		conns:        make(map[net.Conn]struct{}),
-		exitChan:     exitChannel,
 		rh:           rh,
 		rqtChan:      make(chan struct{}),
 		shutdownChan: make(chan struct{}),
 		l:            listener,
 	}, nil
-}
-
-// Returns the channel that the server listens for receiving exit signals. Returned channel can be invoked for sending exit signals to the server.
-func (s *TcpServer) GetExitChannel() chan os.Signal {
-	return s.exitChan
 }
 
 func (s *TcpServer) Start() error {

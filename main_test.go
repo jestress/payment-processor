@@ -18,6 +18,7 @@ import (
 	"github.com/jestress/payment-processor/validator"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/context"
 )
 
 type TestScheme struct {
@@ -36,10 +37,11 @@ var serverShutdownInitiationTime time.Time
 var serverShutdownTime time.Time
 
 func setupServer(t *testing.T) *server.TcpServer {
+	_, cn := context.WithCancel(t.Context())
 	activeTest := t.Name()
 	validator := validator.NewAmountValidator()
 	requestHandler := server.NewRequestHandler(validator, make(chan struct{}))
-	tcpServer, err := server.NewTcpServer(requestHandler)
+	tcpServer, err := server.NewTcpServer(requestHandler, cn)
 	shutdownSynchronizationMutex = sync.Mutex{}
 	if err != nil {
 		panic(err)
