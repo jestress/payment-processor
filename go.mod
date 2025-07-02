@@ -1,10 +1,11 @@
 module github.com/jestress/payment-processor
 
-go 1.23.0
+go 1.24.4
 
 require (
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/mock v0.4.0
+	golang.org/x/net v0.41.0
 )
 
 require (

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"testing"
 
 	"github.com/jestress/payment-processor/mock"
@@ -9,16 +10,14 @@ import (
 )
 
 func Test_TcpServer_NewTcpServer_ReturnsTcpServer(t *testing.T) {
-	// Arrange
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
+	_, cn := context.WithCancel(t.Context())
 
 	mock_requestHandler := mock.NewMockRequestHandler(ctrl)
 
-	// Act
-	tcpServer, err := NewTcpServer(mock_requestHandler)
+	tcpServer, err := NewTcpServer(mock_requestHandler, cn)
 
-	// Assert
 	assert.NotNil(t, tcpServer)
 	assert.NoError(t, err)
 
@@ -26,18 +25,13 @@ func Test_TcpServer_NewTcpServer_ReturnsTcpServer(t *testing.T) {
 }
 
 func Test_TcpServer_GetExitChannel_ReturnsExitChannel(t *testing.T) {
-	// Arrange
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
+	_, cn := context.WithCancel(t.Context())
 
 	mock_requestHandler := mock.NewMockRequestHandler(ctrl)
 
-	tcpServer, _ := NewTcpServer(mock_requestHandler)
+	tcpServer, _ := NewTcpServer(mock_requestHandler, cn)
 
-	// Act
-	result := tcpServer.GetExitChannel()
-
-	// Assert
-	assert.NotNil(t, result)
 	tcpServer.Stop()
 }

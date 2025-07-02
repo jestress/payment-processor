@@ -36,8 +36,8 @@ var shutdownInitiated bool
 var serverShutdownInitiationTime time.Time
 var serverShutdownTime time.Time
 
-func setupServer(t *testing.T) *server.TcpServer {
-	_, cn := context.WithCancel(t.Context())
+func setupServer(t *testing.T) (*server.TcpServer, context.Context) {
+	ctx, cn := context.WithCancel(t.Context())
 	activeTest := t.Name()
 	validator := validator.NewAmountValidator()
 	requestHandler := server.NewRequestHandler(validator, make(chan struct{}))
@@ -47,20 +47,19 @@ func setupServer(t *testing.T) *server.TcpServer {
 		panic(err)
 	}
 
-	exitChannel := tcpServer.GetExitChannel()
 	// Register cleanup function
 	t.Cleanup(func() {
 		log.Printf("%s|Cleaning up.\n", activeTest)
-		exitChannel <- syscall.SIGINT
+		ctx <- syscall.SIGINT
 	})
 
 	log.Printf("%s|Starting server\n", activeTest)
-	go Start(tcpServer)
+	go tcpServer.Start()
 
 	// Wait for the server to get ready
 	time.Sleep(time.Second)
 
-	return tcpServer
+	return tcpServer, ctx
 }
 
 func Test_PaymentProcessing_BasicScenarios(t *testing.T) {
@@ -195,7 +194,8 @@ func Test_PaymentProcessing_SendRequestToInvalidPort_ConnectionFails(t *testing.
 
 func Test_PaymentProcessing_ConnectDuringServerShutdown_ServerReturnsResponseWhileGracefullyShuttingDown(t *testing.T) {
 	testScheme := createTestScheme(1500) // Should take 1500 milliseconds to process, which is within the servers shutdown grace period
-	tcpServer := setupServer(t)
+	tcpServer, ctx := setupServer(t)
+
 	conn, err := net.Dial("tcp", ":8080")
 	require.NoError(t, err, "Failed to connect to server")
 	defer conn.Close()
