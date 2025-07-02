@@ -36,8 +36,8 @@ var shutdownInitiated bool
 var serverShutdownInitiationTime time.Time
 var serverShutdownTime time.Time
 
-func setupServer(t *testing.T) (*server.TcpServer, context.Context) {
-	ctx, cn := context.WithCancel(t.Context())
+func setupServer(t *testing.T) (*server.TcpServer, context.CancelFunc) {
+	_, cn := context.WithCancel(t.Context())
 	activeTest := t.Name()
 	validator := validator.NewAmountValidator()
 	requestHandler := server.NewRequestHandler(validator, make(chan struct{}))
@@ -50,7 +50,7 @@ func setupServer(t *testing.T) (*server.TcpServer, context.Context) {
 	// Register cleanup function
 	t.Cleanup(func() {
 		log.Printf("%s|Cleaning up.\n", activeTest)
-		ctx <- syscall.SIGINT
+		cn()
 	})
 
 	log.Printf("%s|Starting server\n", activeTest)
@@ -59,7 +59,7 @@ func setupServer(t *testing.T) (*server.TcpServer, context.Context) {
 	// Wait for the server to get ready
 	time.Sleep(time.Second)
 
-	return tcpServer, ctx
+	return tcpServer, cn
 }
 
 func Test_PaymentProcessing_BasicScenarios(t *testing.T) {
@@ -194,14 +194,13 @@ func Test_PaymentProcessing_SendRequestToInvalidPort_ConnectionFails(t *testing.
 
 func Test_PaymentProcessing_ConnectDuringServerShutdown_ServerReturnsResponseWhileGracefullyShuttingDown(t *testing.T) {
 	testScheme := createTestScheme(1500) // Should take 1500 milliseconds to process, which is within the servers shutdown grace period
-	tcpServer, ctx := setupServer(t)
+	_, cn := setupServer(t)
 
 	conn, err := net.Dial("tcp", ":8080")
 	require.NoError(t, err, "Failed to connect to server")
 	defer conn.Close()
 
-	exitChannel := tcpServer.GetExitChannel()
-	exitChannel <- syscall.SIGINT
+	cn()
 
 	time.Sleep(time.Second) // Wait for shutdown to count one second down
 
@@ -218,9 +217,8 @@ func Test_PaymentProcessing_ConnectDuringServerShutdown_ServerReturnsResponseWhi
 }
 
 func Test_PaymentProcessing_ConnectAfterServerShutdown_ServerConnectionReturnsError(t *testing.T) {
-	tcpServer := setupServer(t)
-	exitChannel := tcpServer.GetExitChannel()
-	exitChannel <- syscall.SIGINT
+	_, cn := setupServer(t)
+	cn()
 
 	time.Sleep(5 * time.Second) // Wait for servers shutdown time-frame to expire
 
@@ -231,13 +229,12 @@ func Test_PaymentProcessing_ConnectAfterServerShutdown_ServerConnectionReturnsEr
 }
 
 func Test_PaymentProcessing_ActiveRequestDuringServerShutdown_RequestIsProcessedBeforeServerShutsDown_ServerReturnsResponse(t *testing.T) {
-	tcpServer := setupServer(t)
-	exitChannel := tcpServer.GetExitChannel()
+	_, cn := setupServer(t)
 
 	conn, err := net.Dial("tcp", ":8080")
 	require.NoError(t, err, "Failed to connect to server")
 	defer conn.Close()
-	exitChannel <- syscall.SIGINT
+	cn()
 
 	_, err = fmt.Fprintf(conn, "PAYMENT|10\n")
 	require.NoError(t, err, "Failed to send request")
@@ -249,16 +246,14 @@ func Test_PaymentProcessing_ActiveRequestDuringServerShutdown_RequestIsProcessed
 }
 
 func Test_PaymentProcessing_ActiveRequestDuringServerShutdown_RequestIsNotProcessedBeforeServerShutsDown_ServerReturnsRejection(t *testing.T) {
-	tcpServer := setupServer(t)
-	exitChannel := tcpServer.GetExitChannel()
-
+	_, cn := setupServer(t)
 	conn, err := net.Dial("tcp", ":8080")
 	require.NoError(t, err, "Failed to connect to server")
 	defer conn.Close()
 	_, err = fmt.Fprintf(conn, "PAYMENT|10000\n")
 	require.NoError(t, err, "Failed to send request")
 
-	exitChannel <- syscall.SIGINT
+	cn()
 
 	response, err := bufio.NewReader(conn).ReadString('\n')
 	require.NoError(t, err, "Failed to read response")
@@ -289,8 +284,7 @@ func Test_PaymentProcessing_SendConsecutiveRequestsOnTheSameConnection_ServerRet
 }
 
 func Test_PaymentProcessing_SendConsecutiveRequestsOnTheSameConnection_ShutdownTriggered_ServerGracefullyShutsdown(t *testing.T) {
-	tcpServer := setupServer(t)
-	exitChannel := tcpServer.GetExitChannel()
+	_, cn := setupServer(t)
 	conn, err := net.Dial("tcp", ":8080")
 	require.NoError(t, err, "Failed to connect to server")
 	defer conn.Close()
@@ -305,7 +299,7 @@ func Test_PaymentProcessing_SendConsecutiveRequestsOnTheSameConnection_ShutdownT
 		if i == iterationToShutdown {
 			shutdownInitiated = true
 			shutdownInitiationTime := time.Now()
-			exitChannel <- syscall.SIGINT
+			cn()
 			serverShutdownTime = shutdownInitiationTime.Add(config.TimeoutDurationForActiveRequests)
 		}
 
@@ -393,8 +387,7 @@ func Test_PaymentProcessing_SendFiftyConcurrentRequestsWithRandomAmounts_Shutdow
 }
 
 func Test_PaymentProcessing_SendFiftyConcurrentRequestsWithRandomAmounts_TriggerDuringExecution_ServerGracefullyShutsdown(t *testing.T) {
-	tcpServer := setupServer(t)
-	exitChannel := tcpServer.GetExitChannel()
+	_, cn := setupServer(t)
 
 	amountOfConnectionsToSpawn := 500                     // Change this value to as many requests as you want to spawn
 	iterationToShutdown := amountOfConnectionsToSpawn / 2 // Change this value to the iteration you want to trigger the shutdown
@@ -408,7 +401,7 @@ func Test_PaymentProcessing_SendFiftyConcurrentRequestsWithRandomAmounts_Trigger
 
 			if i == iterationToShutdown {
 				initiateServerShutdown()
-				exitChannel <- syscall.SIGINT
+				cn()
 				log.Printf("Iteration:%d|Request:%s|Exit channel has been signaled.\n", i, testScheme.input)
 			}
 
