@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"bufio"
@@ -270,7 +270,7 @@ func Test_PaymentProcessing_SendConsecutiveRequestsOnTheSameConnection_ServerRet
 
 	for i := 0; i < 10; i++ {
 		testScheme := createRandomizedTestScheme(500)
-		_, err = fmt.Fprintf(conn, testScheme.input)
+		_, err = fmt.Fprintf(conn, "%s", testScheme.input)
 		require.NoError(t, err, "Failed to send request")
 
 		start := time.Now()
@@ -303,7 +303,7 @@ func Test_PaymentProcessing_SendConsecutiveRequestsOnTheSameConnection_ShutdownT
 			serverShutdownTime = shutdownInitiationTime.Add(config.TimeoutDurationForActiveRequests)
 		}
 
-		_, err = fmt.Fprintf(conn, testScheme.input)
+		_, err = fmt.Fprintf(conn, "%s", testScheme.input)
 		require.NoError(t, err, "Failed to send request")
 
 		requestStart := time.Now()
@@ -368,9 +368,13 @@ func Test_PaymentProcessing_SendFiftyConcurrentRequestsWithRandomAmounts_Shutdow
 			testScheme := createRandomizedTestScheme(10000)
 
 			conn, err := net.Dial("tcp", ":8080")
+			if err != nil {
+				log.Printf("Error connecting to server: %v\n", err)
+				return
+			}
 			defer conn.Close()
 			require.NoError(t, err, "Failed to connect to server")
-			_, err = fmt.Fprintf(conn, testScheme.input)
+			_, err = fmt.Fprintf(conn, "%s", testScheme.input)
 			require.NoError(t, err, "Failed to send request")
 			start := time.Now()
 			response, err := bufio.NewReader(conn).ReadString('\n')
@@ -442,7 +446,7 @@ func Test_PaymentProcessing_SendFiftyConcurrentRequestsWithRandomAmounts_Trigger
 			require.NoError(t, err, fmt.Sprintf(
 				"Client|Error connecting to server: %v. Iteration: %v. Request: %s", err, i, testScheme.input))
 			// Send the request
-			_, err = fmt.Fprintf(conn, testScheme.input)
+			_, err = fmt.Fprintf(conn, "%s", testScheme.input)
 			if !subroutineIsShutdownInitiated {
 				require.NoError(t, err, "Failed to send request")
 			}
