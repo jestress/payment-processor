@@ -37,11 +37,11 @@ var serverShutdownInitiationTime time.Time
 var serverShutdownTime time.Time
 
 func setupServer(t *testing.T) (*server.TcpServer, context.CancelFunc) {
-	_, cn := context.WithCancel(t.Context())
+	ctx, cn := context.WithCancel(t.Context())
 	activeTest := t.Name()
 	validator := validator.NewAmountValidator()
-	requestHandler := server.NewRequestHandler(validator, make(chan struct{}))
-	tcpServer, err := server.NewTcpServer(requestHandler, cn)
+	requestHandler := server.NewRequestHandler(ctx, validator)
+	tcpServer, err := server.NewTcpServer(requestHandler, ctx, cn)
 	shutdownSynchronizationMutex = sync.Mutex{}
 	if err != nil {
 		panic(err)

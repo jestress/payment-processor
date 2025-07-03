@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -18,18 +19,15 @@ func Test_RequestHandler_NewRequestHandler_ReturnsRequestHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	requestTerminationChannel := make(chan struct{})
-
 	// Mocks
 	mock_validator := mock.NewMockValidator(ctrl)
 
 	// Act
-	result := NewRequestHandler(mock_validator, requestTerminationChannel)
+	result := NewRequestHandler(t.Context(), mock_validator)
 
 	// Assert
 	assert.NotNil(t, result)
 	assert.Equal(t, mock_validator, result.validator)
-	assert.Equal(t, requestTerminationChannel, result.requestTerminationChannel)
 }
 
 func Test_RequestHandler_HandleRequest_InvalidRequest_ReturnsError(t *testing.T) {
@@ -40,14 +38,13 @@ func Test_RequestHandler_HandleRequest_InvalidRequest_ReturnsError(t *testing.T)
 	expectedError := fmt.Sprintf(messages.ResponseBodyPattern, messages.ResponseRejectedMarker, messages.InvalidRequestErrorMessage)
 	validationError := errors.New(messages.InvalidRequestErrorMessage)
 	invalidRequest := "invalid_request"
-	requestTerminationChannel := make(chan struct{})
 
 	// Mocks
 	mock_validator := mock.NewMockValidator(ctrl)
 	mock_validator.EXPECT().Validate(invalidRequest).Return(-1, validationError)
 
 	// Act
-	requestHandler := NewRequestHandler(mock_validator, requestTerminationChannel)
+	requestHandler := NewRequestHandler(t.Context(), mock_validator)
 	result := requestHandler.HandleRequest(invalidRequest)
 
 	// Assert
@@ -61,14 +58,13 @@ func Test_RequestHandler_HandleRequest_RequestWithLowerAmountThanLimit_ReturnsRe
 
 	expectedResponse := fmt.Sprintf(messages.ResponseBodyPattern, messages.RequestAcceptedMarker, messages.TransactionProcessedResponse)
 	request := "payment|100"
-	requestTerminationChannel := make(chan struct{})
 
 	// Mocks
 	mock_validator := mock.NewMockValidator(ctrl)
 	mock_validator.EXPECT().Validate(request).Return(100, nil)
 
 	// Act
-	requestHandler := NewRequestHandler(mock_validator, requestTerminationChannel)
+	requestHandler := NewRequestHandler(t.Context(), mock_validator)
 	result := requestHandler.HandleRequest(request)
 
 	// Assert
@@ -85,14 +81,13 @@ func Test_RequestHandler_HandleRequest_RequestWithHigherAmountThanLimit_ReturnsR
 	maxDuration := time.Duration(amount+50) * time.Millisecond
 	expectedResponse := fmt.Sprintf(messages.ResponseBodyPattern, messages.RequestAcceptedMarker, messages.TransactionProcessedResponse)
 	request := fmt.Sprintf("payment|%v", amount)
-	requestTerminationChannel := make(chan struct{})
 
 	// Mocks
 	mock_validator := mock.NewMockValidator(ctrl)
 	mock_validator.EXPECT().Validate(request).Return(amount, nil)
 
 	// Act
-	requestHandler := NewRequestHandler(mock_validator, requestTerminationChannel)
+	requestHandler := NewRequestHandler(t.Context(), mock_validator)
 
 	start := time.Now()
 	result := requestHandler.HandleRequest(request)
@@ -114,14 +109,13 @@ func Test_RequestHandler_HandleRequest_RequestWithHigherAmountThanTenThousand_Re
 	maxDuration := time.Duration(10050) * time.Millisecond
 	expectedResponse := fmt.Sprintf(messages.ResponseBodyPattern, messages.RequestAcceptedMarker, messages.TransactionProcessedResponse)
 	request := fmt.Sprintf("payment|%v", amount)
-	requestTerminationChannel := make(chan struct{})
 
 	// Mocks
 	mock_validator := mock.NewMockValidator(ctrl)
 	mock_validator.EXPECT().Validate(request).Return(amount, nil)
 
 	// Act
-	requestHandler := NewRequestHandler(mock_validator, requestTerminationChannel)
+	requestHandler := NewRequestHandler(t.Context(), mock_validator)
 
 	start := time.Now()
 	result := requestHandler.HandleRequest(request)
@@ -135,6 +129,7 @@ func Test_RequestHandler_HandleRequest_RequestWithHigherAmountThanTenThousand_Re
 
 func Test_RequestHandler_HandleRequest_TerminationInvokedWhileProcessing_ReturnsResponse(t *testing.T) {
 	// Arrange
+	ctx, cn := context.WithCancel(t.Context())
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -142,18 +137,17 @@ func Test_RequestHandler_HandleRequest_TerminationInvokedWhileProcessing_Returns
 	maxDuration := time.Duration(amount+50) * time.Millisecond
 	expectedResponse := fmt.Sprintf(messages.ResponseBodyPattern, messages.RequestAcceptedMarker, messages.TransactionProcessedResponse)
 	request := fmt.Sprintf(messages.PaymentRequestBodyPattern, amount)
-	requestTerminationChannel := make(chan struct{})
 
 	// Mocks
 	mock_validator := mock.NewMockValidator(ctrl)
 	mock_validator.EXPECT().Validate(request).Return(amount, nil)
 
 	// Act
-	requestHandler := NewRequestHandler(mock_validator, requestTerminationChannel)
+	requestHandler := NewRequestHandler(ctx, mock_validator)
 
 	start := time.Now()
 	result := requestHandler.HandleRequest(request)
-	close(requestTerminationChannel)
+	cn()
 	elapsed := time.Since(start)
 
 	// Assert
@@ -163,6 +157,7 @@ func Test_RequestHandler_HandleRequest_TerminationInvokedWhileProcessing_Returns
 
 func Test_RequestHandler_HandleRequest_TerminationInvokedWhileProcessing_RequestTerminates(t *testing.T) {
 	// Arrange
+	ctx, cn := context.WithCancel(t.Context())
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -170,17 +165,16 @@ func Test_RequestHandler_HandleRequest_TerminationInvokedWhileProcessing_Request
 	timeoutDurationWithBuffer := config.TimeoutDurationForActiveRequests + 50*time.Millisecond
 	expectedResponse := fmt.Sprintf(messages.ResponseBodyPattern, messages.ResponseRejectedMarker, messages.RequestCancelledResponse)
 	request := fmt.Sprintf(messages.PaymentRequestBodyPattern, amount)
-	requestTerminationChannel := make(chan struct{})
 
 	// Mocks
 	mock_validator := mock.NewMockValidator(ctrl)
 	mock_validator.EXPECT().Validate(request).Return(amount, nil)
 
 	// Act
-	requestHandler := NewRequestHandler(mock_validator, requestTerminationChannel)
+	requestHandler := NewRequestHandler(ctx, mock_validator)
 
 	go func() {
-		close(requestTerminationChannel)
+		cn()
 	}()
 
 	start := time.Now()

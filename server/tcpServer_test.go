@@ -12,11 +12,11 @@ import (
 func Test_TcpServer_NewTcpServer_ReturnsTcpServer(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	_, cn := context.WithCancel(t.Context())
+	ctx, cn := context.WithCancel(t.Context())
 
 	mock_requestHandler := mock.NewMockRequestHandler(ctrl)
 
-	tcpServer, err := NewTcpServer(mock_requestHandler, cn)
+	tcpServer, err := NewTcpServer(mock_requestHandler, ctx, cn)
 
 	assert.NotNil(t, tcpServer)
 	assert.NoError(t, err)
@@ -27,11 +27,11 @@ func Test_TcpServer_NewTcpServer_ReturnsTcpServer(t *testing.T) {
 func Test_TcpServer_GetExitChannel_ReturnsExitChannel(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	_, cn := context.WithCancel(t.Context())
+	ctx, cn := context.WithCancel(t.Context())
 
 	mock_requestHandler := mock.NewMockRequestHandler(ctrl)
 
-	tcpServer, _ := NewTcpServer(mock_requestHandler, cn)
+	tcpServer, _ := NewTcpServer(mock_requestHandler, ctx, cn)
 
 	tcpServer.Stop()
 }

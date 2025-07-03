@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -11,20 +12,15 @@ import (
 )
 
 type RequestHandler struct {
-	validator                 contracts.Validator
-	requestTerminationChannel chan struct{}
+	ctx       context.Context
+	validator contracts.Validator
 }
 
-func NewRequestHandler(validator contracts.Validator, requestTerminationChannel chan struct{}) *RequestHandler {
+func NewRequestHandler(ctx context.Context, validator contracts.Validator) *RequestHandler {
 	return &RequestHandler{
-		requestTerminationChannel: requestTerminationChannel,
-		validator:                 validator,
+		ctx:       ctx,
+		validator: validator,
 	}
-}
-
-// Returns the channel that the handler listens for receiving termination signals for the active request.
-func (rh *RequestHandler) GetRequestTerminateChannel() chan struct{} {
-	return rh.requestTerminationChannel
 }
 
 func (rh *RequestHandler) HandleRequest(request string) string {
@@ -40,7 +36,7 @@ func (rh *RequestHandler) HandleRequest(request string) string {
 			processingTime = config.MaximumProcessingTime
 		}
 		select {
-		case <-rh.requestTerminationChannel:
+		case <-rh.ctx.Done():
 			log.Printf("Server||Active Request: %s||Terminating request due to external signal.\n", request)
 			return fmt.Sprintf(response, messages.ResponseRejectedMarker, messages.RequestCancelledResponse)
 		case <-time.After(time.Duration(processingTime) * time.Millisecond): // Simulate a moderately long processing time

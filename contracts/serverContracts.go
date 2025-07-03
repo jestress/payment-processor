@@ -21,9 +21,6 @@ type TcpServer interface {
 // Defines methods for a request handler.
 type RequestHandler interface {
 
-	// Returns the channel that the handler listens for receiving termination signals for the active request.
-	GetRequestTerminateChannel() chan struct{}
-
 	// Processes the incoming request and returns response.
 	HandleRequest(request string) string
 }

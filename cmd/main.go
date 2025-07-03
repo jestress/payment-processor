@@ -15,11 +15,11 @@ func init() {
 }
 
 func main() {
-	validator := validator.NewAmountValidator()
-	requestHandler := server.NewRequestHandler(validator, make(chan struct{}))
-
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
-	s, err := server.NewTcpServer(requestHandler, stop)
+	validator := validator.NewAmountValidator()
+	requestHandler := server.NewRequestHandler(ctx, validator)
+
+	s, err := server.NewTcpServer(requestHandler, ctx, stop)
 	defer stop()
 	if err != nil {
 		log.Printf("error creating server: %v\n", err)

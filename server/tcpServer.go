@@ -15,31 +15,30 @@ import (
 )
 
 type TcpServer struct {
-	cnFn         context.CancelFunc
-	inChan       chan net.Conn // Channel to signal the server to handle incoming connection
-	rqtChan      chan struct{} // Channel to signal the server to gracefully terminate active requests
-	shutdownChan chan struct{} // Channel to signal the server to cleanup and shutdown
-	conns        map[net.Conn]struct{}
-	l            net.Listener
-	rh           contracts.RequestHandler
-	mut          sync.Mutex
-	svWg         sync.WaitGroup
+	ctx     context.Context
+	cnFn    context.CancelFunc
+	inChan  chan net.Conn // Channel to signal the server to handle incoming connection
+	rqtChan chan struct{} // Channel to signal the server to gracefully terminate active requests
+	conns   map[net.Conn]struct{}
+	l       net.Listener
+	rh      contracts.RequestHandler
+	mut     sync.Mutex
+	svWg    sync.WaitGroup
 }
 
-func NewTcpServer(rh contracts.RequestHandler, cn context.CancelFunc) (*TcpServer, error) {
+func NewTcpServer(rh contracts.RequestHandler, ctx context.Context, cn context.CancelFunc) (*TcpServer, error) {
 	listener, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", config.ListenerPortnumber))
 	if err != nil {
 		return nil, err
 	}
 
 	return &TcpServer{
-		cnFn:         cn,
-		inChan:       make(chan net.Conn),
-		conns:        make(map[net.Conn]struct{}),
-		rh:           rh,
-		rqtChan:      make(chan struct{}),
-		shutdownChan: make(chan struct{}),
-		l:            listener,
+		cnFn:    cn,
+		inChan:  make(chan net.Conn),
+		conns:   make(map[net.Conn]struct{}),
+		rh:      rh,
+		rqtChan: make(chan struct{}),
+		l:       listener,
 	}, nil
 }
 
@@ -58,7 +57,7 @@ func (s *TcpServer) Stop() {
 	}
 
 	log.Println("Server|INVOKE_SHUTDOWN|Server invoking the shutdown channel.")
-	close(s.shutdownChan)
+	s.cnFn()
 
 	done := make(chan struct{})
 	go func() {
@@ -92,7 +91,7 @@ func (s *TcpServer) acceptConnections() {
 
 	for {
 		select {
-		case <-s.shutdownChan:
+		case <-s.ctx.Done():
 			log.Println("Server|Signal received on shutdown channel. Exiting main server loop.")
 			return
 		default:
@@ -164,7 +163,7 @@ func (s *TcpServer) handleConnection(conn net.Conn) {
 		log.Printf("Server||C:%s||Request received: %s\n", remoteAddr, req)
 		refresh(conn) // As soon as a request is received, refresh the read deadline on the connection
 		start := time.Now()
-		rh := NewRequestHandler(validator.NewAmountValidator(), s.rqtChan)
+		rh := NewRequestHandler(s.ctx, validator.NewAmountValidator())
 		res := rh.HandleRequest(req)
 		duration := time.Since(start)
 		log.Printf("Server||C:%s||Request: %s||Writing response: %s||Duration:%v\n\n", remoteAddr, req, res, duration)
@@ -175,7 +174,6 @@ func (s *TcpServer) handleConnection(conn net.Conn) {
 	}
 }
 
-// Refresh the read deadline on the connection to ensure that the server waits for the client to send a request.
 func refresh(conn net.Conn) {
 	readErr := conn.SetReadDeadline(time.Now().Add(config.ReadTimeoutForActiveRequest))
 	if readErr != nil {
