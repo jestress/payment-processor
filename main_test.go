@@ -100,7 +100,7 @@ func Test_PaymentProcessing_BasicScenarios(t *testing.T) {
 			require.NoError(t, err, "Failed to connect to server")
 			defer conn.Close()
 
-			_, err = fmt.Fprintf(conn, tt.input+"\n")
+			_, err = fmt.Fprintf(conn, "%s", tt.input+"\n")
 			require.NoError(t, err, "Failed to send request")
 
 			start := time.Now()
@@ -204,7 +204,7 @@ func Test_PaymentProcessing_ConnectDuringServerShutdown_ServerReturnsResponseWhi
 
 	time.Sleep(time.Second) // Wait for shutdown to count one second down
 
-	_, err = fmt.Fprintf(conn, testScheme.input)
+	_, err = fmt.Fprintf(conn, "%s", testScheme.input)
 	require.NoError(t, err, "Failed to send request")
 
 	start := time.Now()
