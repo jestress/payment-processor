@@ -75,13 +75,13 @@ func (s *TcpServer) Stop() {
 		close(done)
 	}()
 
-	activeConnectionCount := s.getActiveConnectionCount()
+	activeConns := s.getConns()
 	if len(s.conns) == 0 {
 		log.Println("Server|NO_WAIT|No active connections. Shutting down.")
 		return
 	}
 
-	log.Printf("Server|WAIT_ACTIVE_CONNECTIONServer|Allowing following %v connection(s) to complete before shutting down.\n", activeConnectionCount)
+	log.Printf("Server|WAIT_ACTIVE_CONNECTIONServer|Allowing following %v connection(s) to complete before shutting down.\n", activeConns)
 	s.activeConns()
 	select {
 	case <-done:
@@ -122,36 +122,36 @@ func (s *TcpServer) handle() {
 			return
 		case conn := <-s.inChan:
 			log.Printf("Server|C:%s|An incoming connection signaled the connection listener channel.\n", conn.RemoteAddr())
-			s.addConnection(conn)
-			go s.handleConnection(conn)
+			s.add(conn)
+			go s.handleConn(conn)
 		}
 	}
 }
 
-func (s *TcpServer) addConnection(conn net.Conn) {
+func (s *TcpServer) add(conn net.Conn) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 	s.conns[conn] = struct{}{} // Add the connection to the connections table of the server
 }
 
-func (s *TcpServer) removeConnection(conn net.Conn) {
+func (s *TcpServer) remove(conn net.Conn) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 	delete(s.conns, conn) // Remove the connection from the connections table of the server
 }
 
-func (s *TcpServer) getActiveConnectionCount() int {
+func (s *TcpServer) getConns() int {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 	return len(s.conns)
 }
 
-func (s *TcpServer) handleConnection(conn net.Conn) {
+func (s *TcpServer) handleConn(conn net.Conn) {
 	remoteAddr := conn.RemoteAddr()
 	log.Printf("Server|C:%s|Handling incoming connection.\n", remoteAddr)
 
 	defer func() {
-		s.removeConnection(conn)
+		s.remove(conn)
 		err := conn.Close() // Close the connection when the function completes its work and returns
 		if err != nil {
 			log.Printf("Server|C:%s|Error closing connection: %v\n", remoteAddr, err)
