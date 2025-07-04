@@ -33,10 +33,6 @@ func main() {
 		}
 	}()
 
-	if err := s.Start(); err != nil {
-		log.Printf("Error starting server: %v\n", err)
-	}
-
 	<-ctx.Done() // Wait for the context to be done, which will happen on exit signal
 	log.Println("Received exit signal, stopping server...")
 	stop()
