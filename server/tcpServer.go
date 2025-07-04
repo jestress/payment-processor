@@ -43,9 +43,16 @@ func NewTcpServer(rh contracts.RequestHandler, ctx context.Context, cn context.C
 }
 
 func (s *TcpServer) Start() error {
-	s.svWg.Add(2)            // Add two goroutines to the server WaitGroup. One for accepting connections and one for handling connections
-	go s.acceptConnections() // Start accepting connections
-	go s.handleConnections() // Start handling connections
+	s.svWg.Add(2)
+	go s.accept()
+	go s.handle()
+
+	go func() {
+		<-s.ctx.Done()
+		log.Println("Server|CTX_DONE|Context cancelled, triggering server shutdown...")
+		s.Stop()
+	}()
+
 	return nil
 }
 
@@ -85,7 +92,7 @@ func (s *TcpServer) Stop() {
 	}
 }
 
-func (s *TcpServer) acceptConnections() {
+func (s *TcpServer) accept() {
 	defer s.svWg.Done() // Signal the server WaitGroup that the main server loop is closed
 	log.Printf("Server|Listener: %s|Server started accepting connections.\n", s.l.Addr())
 
@@ -105,7 +112,7 @@ func (s *TcpServer) acceptConnections() {
 	}
 }
 
-func (s *TcpServer) handleConnections() {
+func (s *TcpServer) handle() {
 	defer s.svWg.Done()
 
 	for {
