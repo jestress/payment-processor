@@ -33,6 +33,7 @@ func NewTcpServer(rh contracts.RequestHandler, ctx context.Context, cn context.C
 	}
 
 	return &TcpServer{
+		ctx:     ctx,
 		cnFn:    cn,
 		inChan:  make(chan net.Conn),
 		conns:   make(map[net.Conn]struct{}),
