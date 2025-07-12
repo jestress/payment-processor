@@ -33,7 +33,7 @@ func main() {
 		}
 	}()
 
-	<-ctx.Done() // Wait for the context to be done, which will happen on exit signal
+	<-ctx.Done()
 	log.Println("Received exit signal, stopping server...")
 	stop()
 }
