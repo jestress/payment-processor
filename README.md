@@ -60,7 +60,3 @@ Server has been designed to process as many consecutive requests as possible, as
 ## Important note about TCP Backlog Queue Management
 
 Integration tests cover various scenarios where the TCP server is shut down, restarted, and more. For tests where the number of incoming requests exceeds the capacity that the OS Network Stack can directly handle, subsequent connections are enqueued in the TCP backlog queue.
-
-Since net.Listener.Accept() (Line 113) is not triggered when a connection is established but placed on hold in the TCP backlog queue until the server has resources to handle it, this can result in a failure scenario (i.e. Ghost Session). If the server receives an interrupt signal via the "exit channel" while there are still connections waiting in the backlog queue, net.Dial may return a connection, but net.Listener.Accept() will be unable to pick it up, causing an abrupt termination.
-
-This scenario is specifically handled on Line 436 and Line 445 of the main_test.go file.
